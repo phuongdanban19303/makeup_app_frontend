@@ -2,11 +2,12 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 
-export const ProtectedRoute = ({ children, allowedRoles }) => {
+export const ProtectedRoute = ({ children, allowedRoles, allowGuest = false }) => {
   const { isAuthenticated, selectedRole } = useSelector((state) => state.auth);
   const location = useLocation();
 
   if (!isAuthenticated) {
+    if (allowGuest) return children;
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 

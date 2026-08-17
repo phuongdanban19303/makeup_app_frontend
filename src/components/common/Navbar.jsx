@@ -12,7 +12,7 @@ export const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { isAuthenticated, user, selectedRole } = useSelector((state) => state.auth);
+  const { isAuthenticated, user, selectedRole, roles } = useSelector((state) => state.auth);
   const { address } = useSelector((state) => state.location);
   const { activeBooking } = useSelector((state) => state.booking);
 
@@ -28,7 +28,6 @@ export const Navbar = () => {
     setIsUploadingAvatar(true);
     try {
       const imageUrl = await uploadImageToImgBB(file);
-      // Persist avatar URL into PostgreSQL database (users & mua_profiles)
       await authApi.updateAvatar(imageUrl);
       dispatch(updateUser({ avatarUrl: imageUrl, avatar: imageUrl }));
       toast.success('Đã cập nhật ảnh đại diện mới vào cơ sở dữ liệu!', { id: toastId });
@@ -55,13 +54,24 @@ export const Navbar = () => {
     navigate('/auth');
   };
 
+  const logoDestination = selectedRole === 'ROLE_MUA' 
+    ? '/worker/dashboard' 
+    : selectedRole === 'ROLE_ADMIN' 
+    ? '/admin/dashboard' 
+    : '/';
+
+  // Available roles allowed for current logged-in user
+  const userAllowedRoles = isAuthenticated 
+    ? (roles && roles.length > 0 ? roles : [selectedRole]) 
+    : ['ROLE_CUSTOMER'];
+
   return (
     <header className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-rose-100 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
         {/* Brand Logo */}
         <div className="flex items-center gap-6">
-          <Link to="/" className="flex items-center gap-2.5 group">
+          <Link to={logoDestination} className="flex items-center gap-2.5 group">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-500 via-pink-500 to-rose-400 flex items-center justify-center shadow-md shadow-rose-500/20 group-hover:scale-105 transition-transform duration-200">
               <Sparkles className="w-5 h-5 text-white animate-pulse" />
             </div>
@@ -86,43 +96,49 @@ export const Navbar = () => {
           )}
         </div>
 
-        {/* Role Switcher Pill Bar (CUSTOMER / MUA / ADMIN) */}
+        {/* Role Switcher Pill Bar */}
         <div className="flex items-center bg-slate-100 p-1 rounded-full border border-slate-200/80 text-xs">
-          <button
-            onClick={() => handleRoleChange('ROLE_CUSTOMER')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold transition ${
-              selectedRole === 'ROLE_CUSTOMER'
-                ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
-                : 'text-slate-600 hover:text-rose-600'
-            }`}
-          >
-            <Compass size={14} />
-            <span className="hidden sm:inline">Khách Hàng</span>
-          </button>
+          {userAllowedRoles.includes('ROLE_CUSTOMER') && (
+            <button
+              onClick={() => handleRoleChange('ROLE_CUSTOMER')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold transition ${
+                selectedRole === 'ROLE_CUSTOMER'
+                  ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
+                  : 'text-slate-600 hover:text-rose-600'
+              }`}
+            >
+              <Compass size={14} />
+              <span className="hidden sm:inline">Khách Hàng</span>
+            </button>
+          )}
 
-          <button
-            onClick={() => handleRoleChange('ROLE_MUA')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold transition ${
-              selectedRole === 'ROLE_MUA'
-                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                : 'text-slate-600 hover:text-indigo-600'
-            }`}
-          >
-            <Briefcase size={14} />
-            <span className="hidden sm:inline">Thợ MUA</span>
-          </button>
+          {userAllowedRoles.includes('ROLE_MUA') && (
+            <button
+              onClick={() => handleRoleChange('ROLE_MUA')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold transition ${
+                selectedRole === 'ROLE_MUA'
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                  : 'text-slate-600 hover:text-indigo-600'
+              }`}
+            >
+              <Briefcase size={14} />
+              <span className="hidden sm:inline">Thợ MUA</span>
+            </button>
+          )}
 
-          <button
-            onClick={() => handleRoleChange('ROLE_ADMIN')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold transition ${
-              selectedRole === 'ROLE_ADMIN'
-                ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
-                : 'text-slate-600 hover:text-amber-600'
-            }`}
-          >
-            <ShieldCheck size={14} />
-            <span className="hidden sm:inline">Quản Trị</span>
-          </button>
+          {userAllowedRoles.includes('ROLE_ADMIN') && (
+            <button
+              onClick={() => handleRoleChange('ROLE_ADMIN')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold transition ${
+                selectedRole === 'ROLE_ADMIN'
+                  ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
+                  : 'text-slate-600 hover:text-amber-600'
+              }`}
+            >
+              <ShieldCheck size={14} />
+              <span className="hidden sm:inline">Quản Trị</span>
+            </button>
+          )}
         </div>
 
         {/* Navigation Actions & User Menu */}

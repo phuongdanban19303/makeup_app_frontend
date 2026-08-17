@@ -18,9 +18,23 @@ export const AppRoutes = () => {
   return (
     <Routes>
       {/* Public / Customer Routes */}
-      <Route path="/" element={<HomePage />} />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute allowedRoles={['ROLE_CUSTOMER']} allowGuest={true}>
+            <HomePage />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/auth" element={<AuthPage />} />
-      <Route path="/mua/:id" element={<MuaProfilePage />} />
+      <Route
+        path="/mua/:id"
+        element={
+          <ProtectedRoute allowedRoles={['ROLE_CUSTOMER']} allowGuest={true}>
+            <MuaProfilePage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Customer Booking Routes */}
       <Route

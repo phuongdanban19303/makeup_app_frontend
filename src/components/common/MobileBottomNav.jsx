@@ -10,10 +10,26 @@ export const MobileBottomNav = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const { selectedRole, isAuthenticated } = useSelector((state) => state.auth);
+  const { selectedRole, isAuthenticated, roles } = useSelector((state) => state.auth);
   const { activeBooking } = useSelector((state) => state.booking);
 
   const isActive = (path) => location.pathname === path;
+
+  // Available roles allowed for current logged-in user
+  const userAllowedRoles = isAuthenticated 
+    ? (roles && roles.length > 0 ? roles : [selectedRole]) 
+    : ['ROLE_CUSTOMER'];
+
+  const handleRoleToggle = () => {
+    if (userAllowedRoles.length <= 1) return;
+    const currentIndex = userAllowedRoles.indexOf(selectedRole);
+    const nextRole = userAllowedRoles[(currentIndex + 1) % userAllowedRoles.length];
+    dispatch(switchRole(nextRole));
+    toast.info(`Đã đổi chế độ sang: ${nextRole}`);
+    if (nextRole === 'ROLE_CUSTOMER') navigate('/');
+    else if (nextRole === 'ROLE_MUA') navigate('/worker/dashboard');
+    else navigate('/admin/dashboard');
+  };
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-rose-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-2 py-2">
@@ -82,16 +98,9 @@ export const MobileBottomNav = () => {
           </Link>
         )}
 
-        {/* Account / Role Switcher */}
+        {/* Account / Role Display */}
         <button
-          onClick={() => {
-            const nextRole = selectedRole === 'ROLE_CUSTOMER' ? 'ROLE_MUA' : selectedRole === 'ROLE_MUA' ? 'ROLE_ADMIN' : 'ROLE_CUSTOMER';
-            dispatch(switchRole(nextRole));
-            toast.info(`Đã đổi chế độ sang: ${nextRole}`);
-            if (nextRole === 'ROLE_CUSTOMER') navigate('/');
-            else if (nextRole === 'ROLE_MUA') navigate('/worker/dashboard');
-            else navigate('/admin/dashboard');
-          }}
+          onClick={handleRoleToggle}
           className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl text-slate-500 font-medium hover:text-slate-900"
         >
           <User size={20} />

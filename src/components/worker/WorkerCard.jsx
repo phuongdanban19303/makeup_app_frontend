@@ -11,11 +11,12 @@ export const WorkerCard = ({ worker = {}, isSelected, onSelect }) => {
     navigate(`/mua/${worker.muaId || worker.workerId}`);
   };
 
-  const fullName = worker.fullName || worker.muaName || '';
-  const avatar = worker.avatar || worker.avatarUrl || '';
-  const bio = worker.bio || '';
+  const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80';
+  const fullName = worker.fullName || worker.muaName || (worker.workerId ? `Chuyên Gia MUA #${worker.workerId}` : 'Chuyên Gia MUA');
+  const avatar = worker.avatar || worker.avatarUrl || DEFAULT_AVATAR;
+  const bio = worker.bio || 'Chuyên gia trang điểm tận nơi chuyên nghiệp với hơn 5 năm kinh nghiệm.';
 
-  const rating = typeof worker.rating === 'number' ? worker.rating : 0;
+  const rating = typeof worker.rating === 'number' ? worker.rating : 5.0;
   const totalReviews = worker.totalReviews || 0;
   const distanceKm = typeof worker.distanceKm === 'number' ? worker.distanceKm : (worker.distanceKm || 0);
 
@@ -35,6 +36,10 @@ export const WorkerCard = ({ worker = {}, isSelected, onSelect }) => {
           <img
             src={avatar}
             alt={fullName}
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = DEFAULT_AVATAR;
+            }}
             className="w-16 h-16 rounded-2xl object-cover ring-2 ring-slate-100 group-hover:ring-rose-400 transition"
           />
           <span

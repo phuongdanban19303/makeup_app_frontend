@@ -149,20 +149,20 @@ export const OrderTrackingPage = () => {
     return () => clearInterval(timer);
   }, [booking?.bookingId, booking?.status]);
 
-  // Real-time STOMP WebSocket listener for customer status changes
+  // Real-time STOMP WebSocket listener & Auto-polling Fallback (3s) for customer status changes
   React.useEffect(() => {
-    if (!booking) return;
+    if (!booking?.bookingId) return;
 
     websocketService.connect();
 
-    const customerId = booking.customerId || 1;
-    const topic1 = `/topic/customer/${customerId}/status`;
+    const targetCustId = booking.customerId || customerId || 1;
+    const topic1 = `/topic/customer/${targetCustId}/status`;
     const topic2 = `/topic/booking/${booking.bookingId}`;
 
     const handleStatusUpdate = (message) => {
       console.log('[WebSocket] Customer Order Status Update received:', message);
       const payload = message?.payload || message;
-      const newStatus = payload.status || (message.type === 'BOOKING_ACCEPTED' ? 'ACCEPTED' : payload.status);
+      const newStatus = message.status || payload.status || (message.type === 'BOOKING_ACCEPTED' ? 'ACCEPTED' : null);
 
       if (message.type === 'BOOKING_REJECTED' || newStatus === 'REJECTED') {
         dispatch(updateBookingStatus('REJECTED'));
@@ -171,13 +171,13 @@ export const OrderTrackingPage = () => {
         return;
       }
 
-      if (newStatus) {
+      if (newStatus && newStatus !== booking.status) {
         dispatch(updateBookingStatus(newStatus));
         if (newStatus === 'ACCEPTED') {
           setIsTimeoutModalOpen(false);
           toast.success('🎉 Thợ trang điểm đã chấp nhận đơn hàng!');
         } else {
-          toast.info(`Cập nhật trạng thái ca: ${newStatus}`);
+          toast.info(`🔔 Trạng thái mới: ${newStatus}`);
         }
       }
     };
@@ -185,11 +185,34 @@ export const OrderTrackingPage = () => {
     const sub1 = websocketService.subscribe(topic1, handleStatusUpdate);
     const sub2 = websocketService.subscribe(topic2, handleStatusUpdate);
 
+    // ⚡ FAIL-SAFE FALLBACK: Polling 3s/lần tự động truy vấn trạng thái từ booking-service
+    // Đảm bảo ngay cả khi WebSocket chập chờn thì trang web VẪN TỰ ĐỘNG CẬP NHẬT không cần F5!
+    const pollInterval = setInterval(async () => {
+      if (booking.status === 'COMPLETED' || booking.status === 'CANCELLED' || booking.status === 'REJECTED') {
+        return;
+      }
+      try {
+        const res = await bookingApi.getBookingById(booking.bookingId);
+        const data = res?.data || res;
+        if (data && data.status && data.status !== booking.status) {
+          console.log('[POLLING-FALLBACK] Phát hiện trạng thái mới từ API:', data.status);
+          dispatch(updateBookingStatus(data.status));
+          if (data.status === 'ACCEPTED') {
+            setIsTimeoutModalOpen(false);
+            toast.success('🎉 Thợ trang điểm đã chấp nhận đơn hàng!');
+          }
+        }
+      } catch (e) {
+        // Silent catch for poll error
+      }
+    }, 3000);
+
     return () => {
       if (sub1) sub1.unsubscribe();
       if (sub2) sub2.unsubscribe();
+      clearInterval(pollInterval);
     };
-  }, [booking?.bookingId, booking?.customerId]);
+  }, [booking?.bookingId, customerId, dispatch]);
 
   const handleContinueWaiting = async () => {
     setIsSubmitting(true);

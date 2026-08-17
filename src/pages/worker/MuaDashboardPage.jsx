@@ -112,12 +112,16 @@ export const MuaDashboardPage = () => {
 
   // 2. Real-time STOMP WebSocket listener for incoming real booking requests
   useEffect(() => {
-    if (currentWorkerStatus === 'ONLINE') {
+    if (currentWorkerStatus === 'ONLINE' && workerId) {
+      // BẮT BUỘC: Kết nối WebSocket STOMP với server
+      websocketService.connect();
+
       const topic1 = `/topic/worker/${workerId}`;
       const topic2 = `/topic/mua/${workerId}/alerts`;
+      const topic3 = `/topic/workers/alerts`;
 
       const handleMessage = (message) => {
-        console.log('[WebSocket] Nhận thông báo ca đặt mới từ Server:', message);
+        console.log('[WebSocket-MUA] ⚡ Nhận thông báo ca đặt mới từ Server:', message);
         const bookingData = message?.data || message;
         if (bookingData && (bookingData.bookingId || bookingData.bookingCode || bookingData.payload?.bookingId)) {
           const innerPayload = bookingData.payload || bookingData;
@@ -138,13 +142,40 @@ export const MuaDashboardPage = () => {
 
       const sub1 = websocketService.subscribe(topic1, handleMessage);
       const sub2 = websocketService.subscribe(topic2, handleMessage);
+      const sub3 = websocketService.subscribe(topic3, handleMessage);
+
+      // ⚡ FAIL-SAFE FALLBACK: Polling 3s/lần kiểm tra đơn chờ duyệt từ booking-service
+      const pollPendingInterval = setInterval(async () => {
+        if (isDispatchOpen) return;
+        try {
+          const pendingRes = await bookingApi.getPendingBookingsForWorker(workerId);
+          const pendingData = pendingRes?.data || pendingRes;
+          if (Array.isArray(pendingData) && pendingData.length > 0) {
+            const firstPending = pendingData[0];
+            setIncomingRequest({
+              bookingId: firstPending.id || firstPending.bookingId,
+              serviceName: firstPending.serviceName || 'Makeup Dịch Vụ Khách Hàng',
+              customerAddress: firstPending.address || 'Địa chỉ khách hàng',
+              scheduledTime: new Date().toISOString(),
+              totalPrice: firstPending.totalFee || 0,
+              customerName: firstPending.customerName || 'Khách Hàng',
+              customerPhone: firstPending.customerPhone || ''
+            });
+            setIsDispatchOpen(true);
+          }
+        } catch (e) {
+          // Silent poll catch
+        }
+      }, 3000);
 
       return () => {
         if (sub1) sub1.unsubscribe();
         if (sub2) sub2.unsubscribe();
+        if (sub3) sub3.unsubscribe();
+        clearInterval(pollPendingInterval);
       };
     }
-  }, [currentWorkerStatus, workerId]);
+  }, [currentWorkerStatus, workerId, isDispatchOpen]);
 
 
   // 3. Toggle Online/Offline Work Status (API 2.2 & 2.3)

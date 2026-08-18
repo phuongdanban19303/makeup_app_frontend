@@ -77,9 +77,17 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
       const res = await paymentApi.initiateMoMoTopUp(userId, topUpAmount);
       const data = res.data?.data || res.data || {};
       setMomoResult(data);
-      toast.success('Khởi tạo liên kết nạp tiền MoMo thành công!');
+
+      if (data.payUrl) {
+        toast.success('Đang chuyển sang cổng thanh toán MoMo Sandbox...');
+        // Tự động mở trực tiếp trang thanh toán thật của MoMo Gateway
+        window.open(data.payUrl, '_blank');
+      } else if (data.message) {
+        toast.error('Lỗi MoMo: ' + data.message);
+      }
     } catch (err) {
-      toast.error('Không thể tạo liên kết MoMo: ' + (err.message || ''));
+      const errMsg = err.response?.data?.message || err.message || 'Không thể kết nối cổng MoMo';
+      toast.error('Lỗi cổng MoMo: ' + errMsg);
     } finally {
       setIsLoading(false);
     }
@@ -141,16 +149,28 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn cursor-pointer"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] relative cursor-default"
+        onClick={(e) => e.stopPropagation()}
+      >
         
         {/* Header Widget */}
         <div className="bg-gradient-to-r from-rose-600 to-pink-600 p-6 text-white relative">
           <button
-            onClick={onClose}
-            className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 p-2 rounded-full transition text-white"
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (onClose) onClose();
+            }}
+            className="absolute top-4 right-4 z-30 bg-white/20 hover:bg-white/30 hover:scale-110 p-2.5 rounded-full transition-all text-white cursor-pointer flex items-center justify-center shadow-md active:scale-95"
+            aria-label="Đóng"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
           
           <div className="flex items-center gap-2 mb-2 opacity-90 text-xs font-bold uppercase tracking-wider">

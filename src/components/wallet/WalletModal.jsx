@@ -78,12 +78,12 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
       const data = res.data?.data || res.data || {};
       setMomoResult(data);
 
-      if (data.payUrl) {
+      if (data.payUrl && (data.resultCode === 0 || data.resultCode === '0')) {
         toast.success('Đang chuyển sang cổng thanh toán MoMo Sandbox...');
-        // Tự động mở trực tiếp trang thanh toán thật của MoMo Gateway
         window.open(data.payUrl, '_blank');
-      } else if (data.message) {
-        toast.error('Lỗi MoMo: ' + data.message);
+      } else {
+        const momoErr = data.message || 'MoMo từ chối giao dịch (Lỗi chữ ký hoặc cấu hình)';
+        toast.error('Lỗi cổng MoMo: ' + momoErr);
       }
     } catch (err) {
       const errMsg = err.response?.data?.message || err.message || 'Không thể kết nối cổng MoMo';

@@ -13,9 +13,9 @@ export const paymentApi = {
   getWalletLedger: (userId, userType = 'CUSTOMER') =>
     axiosInstance.get(`/api/v1/wallets/user/${userId}/ledger?userType=${userType}`),
 
-  // Khởi tạo yêu cầu nạp tiền MoMo (nhận payUrl & qrCodeUrl)
-  initiateMoMoTopUp: (customerId, amount) =>
-    axiosInstance.post('/api/v1/wallets/top-up/momo', { customerId, amount, paymentMethod: 'MOMO' }),
+  // Khởi tạo yêu cầu nạp tiền VNPay Sandbox (nhận paymentUrl)
+  initiateVnpayTopUp: (customerId, amount) =>
+    axiosInstance.post('/api/v1/wallets/top-up/vnpay', { customerId, amount, paymentMethod: 'VNPAY' }),
 
   // Tạm giữ tiền (Escrow Hold)
   escrowHold: (payload) =>

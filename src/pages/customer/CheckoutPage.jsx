@@ -20,7 +20,7 @@ export const CheckoutPage = () => {
   const { user } = useSelector((state) => state.auth);
 
   const [customerAddress, setCustomerAddress] = useState(address);
-  const [paymentMethod, setPaymentMethod] = useState('E_WALLET'); // 'E_WALLET' | 'CASH' | 'MOMO'
+  const [paymentMethod, setPaymentMethod] = useState('E_WALLET'); // 'E_WALLET' | 'CASH' | 'VNPAY'
   const [walletBalance, setWalletBalance] = useState(0);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
 
@@ -148,7 +148,7 @@ export const CheckoutPage = () => {
 
       // Kiểm tra số dư nếu chọn Ví Điện Tử
       if (paymentMethod === 'E_WALLET' && walletBalance < finalAmount) {
-        toast.error(`Số dư Ví (${walletBalance.toLocaleString('vi-VN')}đ) không đủ thanh toán (${finalAmount.toLocaleString('vi-VN')}đ). Vui lòng Nạp tiền MoMo!`);
+        toast.error(`Số dư Ví (${walletBalance.toLocaleString('vi-VN')}đ) không đủ thanh toán (${finalAmount.toLocaleString('vi-VN')}đ). Vui lòng Nạp tiền VNPay!`);
         setIsWalletModalOpen(true);
         setIsSubmitting(false);
         return;
@@ -340,13 +340,13 @@ export const CheckoutPage = () => {
 
                 <button
                   type="button"
-                  onClick={() => setPaymentMethod('MOMO')}
-                  className={`p-3 rounded-xl border text-center text-xs font-bold transition flex flex-col items-center gap-1.5 ${paymentMethod === 'MOMO'
+                  onClick={() => setPaymentMethod('VNPAY')}
+                  className={`p-3 rounded-xl border text-center text-xs font-bold transition flex flex-col items-center gap-1.5 ${paymentMethod === 'VNPAY'
                       ? 'bg-pink-50 border-pink-500 text-pink-700 shadow-sm'
                       : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                     }`}
                 >
-                  <CreditCard size={20} className="text-pink-600" /> MoMo QR
+                  <CreditCard size={20} className="text-pink-600" /> VNPay Sandbox
                 </button>
               </div>
 
@@ -364,7 +364,7 @@ export const CheckoutPage = () => {
                     onClick={() => setIsWalletModalOpen(true)}
                     className="bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white font-bold text-[11px] px-3.5 py-2 rounded-xl transition shadow-sm flex items-center gap-1"
                   >
-                    <Wallet size={14} /> Nạp MoMo / Ví
+                    <Wallet size={14} /> Nạp VNPay / Ví
                   </button>
                 </div>
               )}

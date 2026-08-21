@@ -10,7 +10,7 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
 
   // Top-Up State
   const [topUpAmount, setTopUpAmount] = useState(100000);
-  const [momoResult, setMomoResult] = useState(null);
+  const [vnpayResult, setMomoResult] = useState(null);
 
   // Ledger History State
   const [ledgerEntries, setLedgerEntries] = useState([]);
@@ -66,7 +66,7 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
     }
   };
 
-  const handleInitiateMoMoTopUp = async () => {
+  const handleInitiateVnpayTopUp = async () => {
     if (!topUpAmount || topUpAmount < 10000) {
       toast.error('Số tiền nạp tối thiểu là 10.000 VNĐ');
       return;
@@ -74,20 +74,20 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
     setIsLoading(true);
     setMomoResult(null);
     try {
-      const res = await paymentApi.initiateMoMoTopUp(userId, topUpAmount);
+      const res = await paymentApi.initiateVnpayTopUp(userId, topUpAmount);
       const data = res.data?.data || res.data || {};
       setMomoResult(data);
 
       if (data.payUrl && (data.resultCode === 0 || data.resultCode === '0')) {
-        toast.success('Đang chuyển sang cổng thanh toán MoMo Sandbox...');
+        toast.success('Đang chuyển sang cổng thanh toán VNPay Sandbox...');
         window.open(data.payUrl, '_blank');
       } else {
-        const momoErr = data.message || 'MoMo từ chối giao dịch (Lỗi chữ ký hoặc cấu hình)';
-        toast.error('Lỗi cổng MoMo: ' + momoErr);
+        const vnpayErr = data.message || 'VNPay từ chối giao dịch (Lỗi chữ ký hoặc cấu hình)';
+        toast.error('Lỗi cổng VNPay: ' + vnpayErr);
       }
     } catch (err) {
-      const errMsg = err.response?.data?.message || err.message || 'Không thể kết nối cổng MoMo';
-      toast.error('Lỗi cổng MoMo: ' + errMsg);
+      const errMsg = err.response?.data?.message || err.message || 'Không thể kết nối cổng VNPay';
+      toast.error('Lỗi cổng VNPay: ' + errMsg);
     } finally {
       setIsLoading(false);
     }
@@ -192,7 +192,7 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <QrCode size={15} /> Nạp MoMo
+            <QrCode size={15} /> Nạp tiền VNPay
           </button>
 
           <button
@@ -253,30 +253,30 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
               </div>
 
               <button
-                onClick={handleInitiateMoMoTopUp}
+                onClick={handleInitiateVnpayTopUp}
                 disabled={isLoading}
                 className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold text-xs py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-md shadow-pink-200"
               >
-                {isLoading ? 'Đang kết nối MoMo Sandbox...' : 'Tạo Mã QR Nạp Tiền MoMo'}
+                {isLoading ? 'Đang kết nối VNPay Sandbox...' : 'Tạo Mã QR Nạp Tiền VNPay'}
               </button>
 
-              {momoResult && (
+              {vnpayResult && (
                 <div className="bg-pink-50 border border-pink-200 p-4 rounded-2xl space-y-3 text-center animate-fadeIn">
-                  <span className="text-xs font-bold text-pink-700 block">Liên Kết Nạp Tiền MoMo Sandbox Trực Tiếp</span>
+                  <span className="text-xs font-bold text-pink-700 block">Liên Kết Nạp Tiền VNPay Sandbox Trực Tiếp</span>
                   
-                  {momoResult.payUrl && (
+                  {vnpayResult.payUrl && (
                     <a
-                      href={momoResult.payUrl}
+                      href={vnpayResult.payUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 bg-pink-600 text-white font-bold text-xs px-5 py-2.5 rounded-xl hover:bg-pink-700 transition shadow-sm"
                     >
-                      <QrCode size={16} /> Mở Trang Thanh Toán MoMo (PayURL)
+                      <QrCode size={16} /> Mở Trang Thanh Toán VNPay (PayURL)
                     </a>
                   )}
 
                   <p className="text-[10px] text-pink-600 font-medium">
-                    * Sau khi nạp trên MoMo thành công, MoMo IPN Webhook sẽ tự động cộng số dư vào ví bạn lập tức.
+                    * Sau khi nạp trên VNPay thành công, VNPay IPN Webhook sẽ tự động cộng số dư vào ví bạn lập tức.
                   </p>
                 </div>
               )}

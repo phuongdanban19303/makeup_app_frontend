@@ -6,7 +6,7 @@ import { HomePage } from '../pages/customer/HomePage';
 import { MuaProfilePage } from '../pages/customer/MuaProfilePage';
 import { CheckoutPage } from '../pages/customer/CheckoutPage';
 import { OrderTrackingPage } from '../pages/customer/OrderTrackingPage';
-import { MomoCallbackPage } from '../pages/customer/MomoCallbackPage';
+import { VnpayCallbackPage } from '../pages/customer/VnpayCallbackPage';
 import { AuthPage } from '../pages/auth/AuthPage';
 
 import { MuaDashboardPage } from '../pages/worker/MuaDashboardPage';
@@ -38,7 +38,8 @@ export const AppRoutes = () => {
       />
 
       {/* Customer Booking & Payment Routes */}
-      <Route path="/payment/momo/callback" element={<MomoCallbackPage />} />
+      <Route path="/payment/vnpay/callback" element={<VnpayCallbackPage />} />
+      <Route path="/payment/momo/callback" element={<VnpayCallbackPage />} />
       <Route
         path="/booking/checkout"
         element={

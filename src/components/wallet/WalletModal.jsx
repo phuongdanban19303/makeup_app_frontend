@@ -10,7 +10,6 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
 
   // Top-Up State
   const [topUpAmount, setTopUpAmount] = useState(100000);
-  const [vnpayResult, setMomoResult] = useState(null);
 
   // Ledger History State
   const [ledgerEntries, setLedgerEntries] = useState([]);
@@ -72,18 +71,16 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
       return;
     }
     setIsLoading(true);
-    setMomoResult(null);
     try {
       const res = await paymentApi.initiateVnpayTopUp(userId, topUpAmount);
       const data = res.data?.data || res.data || {};
-      setMomoResult(data);
+      const paymentUrl = data.paymentUrl || data;
 
-      if (data.payUrl && (data.resultCode === 0 || data.resultCode === '0')) {
-        toast.success('Đang chuyển sang cổng thanh toán VNPay Sandbox...');
-        window.open(data.payUrl, '_blank');
+      if (paymentUrl && typeof paymentUrl === 'string') {
+        toast.success('Đang chuyển sang Cổng thanh toán VNPay Sandbox...');
+        window.location.href = paymentUrl;
       } else {
-        const vnpayErr = data.message || 'VNPay từ chối giao dịch (Lỗi chữ ký hoặc cấu hình)';
-        toast.error('Lỗi cổng VNPay: ' + vnpayErr);
+        toast.error('Lỗi cổng VNPay: Không thể tạo link thanh toán');
       }
     } catch (err) {
       const errMsg = err.response?.data?.message || err.message || 'Không thể kết nối cổng VNPay';
@@ -192,7 +189,7 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <QrCode size={15} /> Nạp tiền VNPay
+            <CreditCard size={15} /> Nạp VNPay Sandbox
           </button>
 
           <button
@@ -203,7 +200,7 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <CreditCard size={15} /> Sổ Cái Bút Toán
+            <QrCode size={15} /> Sổ Cái Bút Toán
           </button>
 
           <button
@@ -221,7 +218,7 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
         {/* Modal Body Content */}
         <div className="p-6 overflow-y-auto space-y-5 flex-1">
           
-          {/* TAB 1: NẠP TIỀN MOMO */}
+          {/* TAB 1: NẠP TIỀN VNPAY */}
           {activeTab === 'TOPUP' && (
             <div className="space-y-4">
               <span className="text-xs font-bold text-slate-700 block">Chọn mệnh giá nạp tiền (VNĐ):</span>
@@ -252,41 +249,25 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
                 />
               </div>
 
+              <div className="bg-blue-50 border border-blue-200 p-3 rounded-2xl text-[11px] text-blue-800 font-medium">
+                💳 Thẻ test VNPay NCB: <strong>970419852619143219</strong> | Chủ thẻ: <strong>NGUYEN VAN A</strong> | OTP: <strong>123456</strong>
+              </div>
+
               <button
                 onClick={handleInitiateVnpayTopUp}
                 disabled={isLoading}
-                className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold text-xs py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-md shadow-pink-200"
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs py-3.5 rounded-xl transition shadow-md shadow-blue-200 flex items-center justify-center gap-2 cursor-pointer"
               >
-                {isLoading ? 'Đang kết nối VNPay Sandbox...' : 'Tạo Mã QR Nạp Tiền VNPay'}
+                <CreditCard size={16} />
+                <span>{isLoading ? 'Đang khởi tạo VNPay...' : 'Nạp Tiền Qua VNPay Sandbox'}</span>
               </button>
-
-              {vnpayResult && (
-                <div className="bg-pink-50 border border-pink-200 p-4 rounded-2xl space-y-3 text-center animate-fadeIn">
-                  <span className="text-xs font-bold text-pink-700 block">Liên Kết Nạp Tiền VNPay Sandbox Trực Tiếp</span>
-                  
-                  {vnpayResult.payUrl && (
-                    <a
-                      href={vnpayResult.payUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 bg-pink-600 text-white font-bold text-xs px-5 py-2.5 rounded-xl hover:bg-pink-700 transition shadow-sm"
-                    >
-                      <QrCode size={16} /> Mở Trang Thanh Toán VNPay (PayURL)
-                    </a>
-                  )}
-
-                  <p className="text-[10px] text-pink-600 font-medium">
-                    * Sau khi nạp trên VNPay thành công, VNPay IPN Webhook sẽ tự động cộng số dư vào ví bạn lập tức.
-                  </p>
-                </div>
-              )}
             </div>
           )}
 
-          {/* TAB 2: LỊCH SỬ BÚT TOÁN SỔ CÁI (LEDGER) */}
+          {/* TAB 2: LỊCH SỬ BÚT TOÁN (LEDGER) */}
           {activeTab === 'LEDGER' && (
             <div className="space-y-3">
-              <span className="text-xs font-bold text-slate-700 block">Nhật Ký Biến Động Số Dư (Append-Only Ledger):</span>
+              <span className="text-xs font-bold text-slate-700 block">Lịch sử biến động sổ cái (Ledger History):</span>
               
               {ledgerEntries.length === 0 ? (
                 <div className="text-center py-8 text-xs text-slate-400 font-medium">Chưa có giao dịch sổ cái nào.</div>

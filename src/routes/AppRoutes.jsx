@@ -39,8 +39,7 @@ export const AppRoutes = () => {
 
       {/* Customer Booking & Payment Routes */}
       <Route path="/payment/vnpay/callback" element={<VnpayCallbackPage />} />
-      <Route path="/payment/momo/callback" element={<VnpayCallbackPage />} />
-      <Route
+            <Route
         path="/booking/checkout"
         element={
           <ProtectedRoute allowedRoles={['ROLE_CUSTOMER']}>

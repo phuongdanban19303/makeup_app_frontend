@@ -81,10 +81,9 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
 
       // 2. Bắn request giả lập nạp tiền thành công sang API /api/v1/wallets/mock-topup
       await paymentApi.mockTopUp(userId, topUpAmount);
-      
+
       toast.success(`Nạp thành công ${(topUpAmount).toLocaleString('vi-VN')} VNĐ vào ví!`);
 
-      // 3. Tự động làm mới số dư ví & sổ cái
       await fetchWalletBalance();
       await fetchLedgerHistory();
     } catch (err) {
@@ -151,15 +150,15 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
   if (!isOpen) return null;
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn cursor-pointer"
       onClick={onClose}
     >
-      <div 
+      <div
         className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] relative cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
-        
+
         {/* Header Widget */}
         <div className="bg-gradient-to-r from-rose-600 to-pink-600 p-6 text-white relative">
           <button
@@ -174,11 +173,11 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
           >
             <X size={20} />
           </button>
-          
+
           <div className="flex items-center gap-2 mb-2 opacity-90 text-xs font-bold uppercase tracking-wider">
             <Wallet size={16} /> Ví Điện Tử MakeupApp ({userType === 'WORKER' ? 'Ví Thợ' : 'Ví Khách'})
           </div>
-          
+
           <div className="text-3xl font-black font-mono tracking-tight">
             {balance.toLocaleString('vi-VN')} <span className="text-sm font-bold opacity-80">VNĐ</span>
           </div>
@@ -188,33 +187,30 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
         <div className="flex border-b border-slate-100 bg-slate-50 text-xs font-bold">
           <button
             onClick={() => setActiveTab('TOPUP')}
-            className={`flex-1 py-3 text-center transition flex items-center justify-center gap-1.5 ${
-              activeTab === 'TOPUP'
+            className={`flex-1 py-3 text-center transition flex items-center justify-center gap-1.5 ${activeTab === 'TOPUP'
                 ? 'bg-white text-rose-600 border-b-2 border-rose-600 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800'
-            }`}
+              }`}
           >
             <CreditCard size={15} /> Nạp VNPay Sandbox
           </button>
 
           <button
             onClick={() => setActiveTab('LEDGER')}
-            className={`flex-1 py-3 text-center transition flex items-center justify-center gap-1.5 ${
-              activeTab === 'LEDGER'
+            className={`flex-1 py-3 text-center transition flex items-center justify-center gap-1.5 ${activeTab === 'LEDGER'
                 ? 'bg-white text-rose-600 border-b-2 border-rose-600 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800'
-            }`}
+              }`}
           >
             <QrCode size={15} /> Sổ Cái Bút Toán
           </button>
 
           <button
             onClick={() => setActiveTab('WITHDRAW')}
-            className={`flex-1 py-3 text-center transition flex items-center justify-center gap-1.5 ${
-              activeTab === 'WITHDRAW'
+            className={`flex-1 py-3 text-center transition flex items-center justify-center gap-1.5 ${activeTab === 'WITHDRAW'
                 ? 'bg-white text-rose-600 border-b-2 border-rose-600 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800'
-            }`}
+              }`}
           >
             <Building2 size={15} /> Rút Về Ngân Hàng
           </button>
@@ -222,22 +218,21 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
 
         {/* Modal Body Content */}
         <div className="p-6 overflow-y-auto space-y-5 flex-1">
-          
+
           {/* TAB 1: NẠP TIỀN VNPAY */}
           {activeTab === 'TOPUP' && (
             <div className="space-y-4">
               <span className="text-xs font-bold text-slate-700 block">Chọn mệnh giá nạp tiền (VNĐ):</span>
-              
+
               <div className="grid grid-cols-4 gap-2">
                 {[50000, 100000, 200000, 500000].map((val) => (
                   <button
                     key={val}
                     onClick={() => setTopUpAmount(val)}
-                    className={`py-2 rounded-xl text-xs font-bold border transition ${
-                      topUpAmount === val
+                    className={`py-2 rounded-xl text-xs font-bold border transition ${topUpAmount === val
                         ? 'bg-rose-50 border-rose-500 text-rose-600'
                         : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                    }`}
+                      }`}
                   >
                     {(val / 1000).toLocaleString()}k
                   </button>
@@ -273,7 +268,7 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
           {activeTab === 'LEDGER' && (
             <div className="space-y-3">
               <span className="text-xs font-bold text-slate-700 block">Lịch sử biến động sổ cái (Ledger History):</span>
-              
+
               {ledgerEntries.length === 0 ? (
                 <div className="text-center py-8 text-xs text-slate-400 font-medium">Chưa có giao dịch sổ cái nào.</div>
               ) : (
@@ -368,11 +363,10 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
                   {bankAccounts.map((b) => (
                     <label
                       key={b.id}
-                      className={`flex items-center justify-between p-3 rounded-2xl border cursor-pointer transition ${
-                        selectedBankId === b.id
+                      className={`flex items-center justify-between p-3 rounded-2xl border cursor-pointer transition ${selectedBankId === b.id
                           ? 'bg-rose-50 border-rose-500'
                           : 'bg-slate-50 border-slate-200'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center gap-2 text-xs">
                         <input

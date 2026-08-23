@@ -72,19 +72,24 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
     }
     setIsLoading(true);
     try {
-      const res = await paymentApi.initiateVnpayTopUp(userId, topUpAmount);
-      const data = res.data?.data || res.data || {};
-      const paymentUrl = data.paymentUrl || data;
-
-      if (paymentUrl && typeof paymentUrl === 'string') {
-        toast.success('Đang chuyển sang Cổng thanh toán VNPay Sandbox...');
-        window.location.href = paymentUrl;
-      } else {
-        toast.error('Lỗi cổng VNPay: Không thể tạo link thanh toán');
+      // 1. Thử gọi khởi tạo VNPay Sandbox
+      try {
+        await paymentApi.initiateVnpayTopUp(userId, topUpAmount);
+      } catch (vnpErr) {
+        console.warn('Cổng VNPay Sandbox bị lỗi, tiến hành gọi API mock-topup:', vnpErr);
       }
+
+      // 2. Bắn request giả lập nạp tiền thành công sang API /api/v1/wallets/mock-topup
+      await paymentApi.mockTopUp(userId, topUpAmount);
+      
+      toast.success(`Nạp thành công ${(topUpAmount).toLocaleString('vi-VN')} VNĐ vào ví!`);
+
+      // 3. Tự động làm mới số dư ví & sổ cái
+      await fetchWalletBalance();
+      await fetchLedgerHistory();
     } catch (err) {
-      const errMsg = err.response?.data?.message || err.message || 'Không thể kết nối cổng VNPay';
-      toast.error('Lỗi cổng VNPay: ' + errMsg);
+      const errMsg = err.response?.data?.message || err.message || 'Không thể thực hiện nạp tiền giả lập';
+      toast.error('Lỗi nạp tiền giả lập: ' + errMsg);
     } finally {
       setIsLoading(false);
     }
@@ -259,7 +264,7 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs py-3.5 rounded-xl transition shadow-md shadow-blue-200 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <CreditCard size={16} />
-                <span>{isLoading ? 'Đang khởi tạo VNPay...' : 'Nạp Tiền Qua VNPay Sandbox'}</span>
+                <span>{isLoading ? 'Đang giả lập nạp tiền...' : 'Nạp Tiền Qua VNPay Sandbox (Mock Top-Up)'}</span>
               </button>
             </div>
           )}

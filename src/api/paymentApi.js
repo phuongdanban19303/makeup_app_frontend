@@ -17,6 +17,10 @@ export const paymentApi = {
   initiateVnpayTopUp: (customerId, amount) =>
     axiosInstance.post('/api/v1/wallets/top-up/vnpay', { customerId, amount, paymentMethod: 'VNPAY' }),
 
+  // Bắn request giả lập nạp tiền thành công (Mock Top-Up)
+  mockTopUp: (customerId, amount) =>
+    axiosInstance.post('/api/v1/wallets/mock-topup', { customerId, amount }),
+
   // Tạm giữ tiền (Escrow Hold)
   escrowHold: (payload) =>
     axiosInstance.post('/api/v1/wallets/escrow/hold', payload),

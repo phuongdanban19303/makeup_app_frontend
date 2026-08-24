@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { setCredentials } from '../../store/authSlice';
 import { authApi } from '../../api/authApi';
+import { auth, RecaptchaVerifier, signInWithPhoneNumber } from '../../config/firebase';
 import { Sparkles, Phone, Lock, User, Mail, Shield, CheckCircle2, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -26,15 +27,43 @@ export const AuthPage = () => {
       toast.error('Vui lòng nhập số điện thoại');
       return;
     }
+    const toastId = toast.loading('Đang khởi tạo SMS OTP qua Firebase...');
     try {
-      const res = await authApi.sendOtp(phone);
-      setOtpSent(true);
-      if (res?.data?.otp) {
-        setOtpCode(res.data.otp);
+      if (!window.recaptchaVerifier) {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible'
+        });
       }
-      toast.success(`Mã OTP giả lập đã được tạo: ${res?.data?.otp || '123456'}`);
-    } catch (err) {
-      toast.error('Không thể gửi OTP: ' + (err.message || ''));
+      // Định dạng số điện thoại chuẩn quốc tế (0364852922 -> +84364852922)
+      const formattedPhone = phone.startsWith('0') ? '+84' + phone.slice(1) : phone;
+
+      // Gửi SMS thật về điện thoại từ Firebase Auth
+      const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, window.recaptchaVerifier);
+      window.confirmationResult = confirmationResult;
+      setOtpSent(true);
+      toast.success(`Đã gửi tin nhắn SMS OTP thật về điện thoại ${formattedPhone}`, { id: toastId });
+    } catch (error) {
+      console.error('Lỗi gửi SMS OTP Firebase:', error);
+      const isBillingError = error.message?.includes('BILLING_NOT_ENABLED');
+      const isRegionError = error.message?.includes('OPERATION_NOT_ALLOWED') || error.code === 'auth/operation-not-allowed';
+
+      // Fallback tự động lấy mã OTP từ Backend khi Firebase cần Billing / chưa bật vùng
+      try {
+        const res = await authApi.sendOtp(phone);
+        setOtpSent(true);
+        if (res?.data?.otp) {
+          setOtpCode(res.data.otp);
+        }
+        if (isBillingError) {
+          toast.warning('Firebase cần thêm SĐT thử nghiệm hoặc bật Billing. Đã dùng mã OTP thử nghiệm: ' + (res?.data?.otp || '123456'), { id: toastId, duration: 8000 });
+        } else if (isRegionError) {
+          toast.warning('Firebase chưa bật SMS vùng Việt Nam (+84). Đã dùng mã OTP thử nghiệm: ' + (res?.data?.otp || '123456'), { id: toastId, duration: 8000 });
+        } else {
+          toast.info(`Mã OTP hệ thống thử nghiệm: ${res?.data?.otp || '123456'}`, { id: toastId });
+        }
+      } catch (fallbackErr) {
+        toast.error('Gửi SMS OTP thất bại: ' + (error.message || 'Lỗi kết nối'), { id: toastId });
+      }
     }
   };
 
@@ -44,13 +73,31 @@ export const AuthPage = () => {
 
     try {
       if (isRegisterMode) {
-        // Register API: POST /api/v1/auth/register
+        let firebaseIdToken = null;
+
+        // 1. Xác minh mã OTP 6 số từ Firebase SMS nếu có
+        const confirmationResult = window.confirmationResult;
+        if (confirmationResult && otpCode) {
+          const toastId = toast.loading('Đang xác thực mã OTP...');
+          try {
+            const result = await confirmationResult.confirm(otpCode);
+            firebaseIdToken = await result.user.getIdToken();
+            toast.success('Xác nhận OTP Firebase thành công!', { id: toastId });
+          } catch (otpErr) {
+            toast.error('Mã OTP không chính xác: ' + (otpErr.message || ''), { id: toastId });
+            setIsSubmitting(false);
+            return;
+          }
+        }
+
+        // 2. Gửi firebaseIdToken và thông tin đăng ký tới Backend user-service
         const res = await authApi.register({
           phone,
           email,
           fullName,
           password,
           otpCode: otpCode || '123456',
+          firebaseIdToken: firebaseIdToken || null,
           role
         });
 
@@ -92,7 +139,7 @@ export const AuthPage = () => {
         }
       }
     } catch (err) {
-      toast.error('Thao tác thất bại: ' + (err.message || ''));
+      toast.error('Thao tác thất bại: ' + (err.response?.data?.message || err.message || ''));
     } finally {
       setIsSubmitting(false);
     }
@@ -100,6 +147,9 @@ export const AuthPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 py-12 bg-slate-50">
+      {/* Invisible Recaptcha Container for Firebase Phone Auth */}
+      <div id="recaptcha-container"></div>
+
       <div className="w-full max-w-md bg-white rounded-3xl border border-rose-100 shadow-xl p-8 space-y-6">
 
         {/* Header */}

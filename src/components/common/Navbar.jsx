@@ -1,10 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { switchRole, logout, updateUser } from '../../store/authSlice';
-import { Sparkles, MapPin, User, LogOut, ShieldCheck, Compass, Calendar, Briefcase, Activity, Camera, Upload } from 'lucide-react';
+import { Sparkles, MapPin, User, LogOut, ShieldCheck, Compass, Calendar, Briefcase, Activity, Camera, Upload, Wallet, History } from 'lucide-react';
 import { uploadImageToImgBB } from '../../utils/imageUploadService';
 import { authApi } from '../../api/authApi';
+import { paymentApi } from '../../api/paymentApi';
+import WalletModal from '../wallet/WalletModal';
 import { toast } from 'sonner';
 
 export const Navbar = () => {
@@ -19,6 +21,24 @@ export const Navbar = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const avatarInputRef = useRef(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  // Customer Wallet State in Navbar
+  const [customerBalance, setCustomerBalance] = useState(0);
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const [walletInitialTab, setWalletInitialTab] = useState('TOPUP');
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const uId = user?.id || user?.userId || '1';
+      const uType = selectedRole === 'ROLE_MUA' ? 'WORKER' : 'CUSTOMER';
+      paymentApi.getWalletBalance(uId, uType)
+        .then((res) => {
+          const data = res.data?.data || res.data || res;
+          setCustomerBalance(data.balance || 0);
+        })
+        .catch((e) => console.warn('Lỗi lấy số dư ví navbar:', e));
+    }
+  }, [isAuthenticated, user, selectedRole]);
 
   const handleAvatarFileSelect = async (e) => {
     const file = e.target.files?.[0];
@@ -159,6 +179,18 @@ export const Navbar = () => {
             </Link>
           )}
 
+          {/* Quick Customer Wallet Balance Pill Header */}
+          {isAuthenticated && selectedRole === 'ROLE_CUSTOMER' && (
+            <button
+              onClick={() => { setWalletInitialTab('TOPUP'); setIsWalletModalOpen(true); }}
+              className="hidden sm:flex items-center gap-1.5 bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 hover:border-rose-400 text-rose-700 px-3.5 py-1.5 rounded-full text-xs font-bold transition shadow-sm cursor-pointer hover:scale-105 active:scale-95"
+              title="Xem ví & Nạp tiền"
+            >
+              <Wallet size={15} className="text-rose-600" />
+              <span>Ví: <strong className="font-mono text-rose-700">{customerBalance.toLocaleString('vi-VN')}đ</strong></span>
+            </button>
+          )}
+
           {isAuthenticated ? (
             <div className="relative">
               <button
@@ -219,12 +251,23 @@ export const Navbar = () => {
                   </div>
 
                   {selectedRole === 'ROLE_CUSTOMER' && (
-                    <Link
-                      to="/"
-                      className="flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-rose-50 hover:text-rose-600 rounded-xl font-medium transition"
-                    >
-                      <Compass size={14} /> Tìm thợ gần đây
-                    </Link>
+                    <>
+                      <Link
+                        to="/"
+                        className="flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-rose-50 hover:text-rose-600 rounded-xl font-medium transition"
+                      >
+                        <Compass size={14} /> Tìm thợ gần đây
+                      </Link>
+                      <button
+                        onClick={() => { setWalletInitialTab('LEDGER'); setIsWalletModalOpen(true); }}
+                        className="w-full flex items-center justify-between px-3 py-2 text-xs text-slate-700 hover:bg-rose-50 hover:text-rose-600 rounded-xl font-medium transition text-left"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Wallet size={14} className="text-rose-600" /> Ví & Lịch sử giao dịch
+                        </span>
+                        <span className="font-mono font-bold text-rose-600">{customerBalance.toLocaleString('vi-VN')}đ</span>
+                      </button>
+                    </>
                   )}
 
                   {selectedRole === 'ROLE_MUA' && (
@@ -273,6 +316,15 @@ export const Navbar = () => {
 
         </div>
       </div>
+
+      <WalletModal
+        isOpen={isWalletModalOpen}
+        onClose={() => setIsWalletModalOpen(false)}
+        userId={user?.id || user?.userId || '1'}
+        userType={selectedRole === 'ROLE_MUA' ? 'WORKER' : 'CUSTOMER'}
+        initialTab={walletInitialTab}
+        onBalanceUpdated={(b) => setCustomerBalance(b)}
+      />
     </header>
   );
 };

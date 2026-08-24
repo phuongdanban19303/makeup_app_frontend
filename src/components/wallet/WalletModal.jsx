@@ -3,8 +3,8 @@ import { Wallet, X, ArrowUpRight, ArrowDownLeft, CreditCard, QrCode, Building2, 
 import { paymentApi } from '../../api/paymentApi';
 import { toast } from 'sonner';
 
-export default function WalletModal({ isOpen, onClose, userId = '1', userType = 'CUSTOMER', onBalanceUpdated }) {
-  const [activeTab, setActiveTab] = useState('TOPUP'); // 'TOPUP' | 'LEDGER' | 'WITHDRAW'
+export default function WalletModal({ isOpen, onClose, userId = '1', userType = 'CUSTOMER', onBalanceUpdated, initialTab = 'TOPUP' }) {
+  const [activeTab, setActiveTab] = useState(initialTab); // 'TOPUP' | 'LEDGER' | 'WITHDRAW'
   const [balance, setBalance] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -25,11 +25,12 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
 
   useEffect(() => {
     if (isOpen) {
+      if (initialTab) setActiveTab(initialTab);
       fetchWalletBalance();
       fetchLedgerHistory();
       fetchBankAccounts();
     }
-  }, [isOpen, userId, userType]);
+  }, [isOpen, userId, userType, initialTab]);
 
   const fetchWalletBalance = async () => {
     try {
@@ -117,31 +118,59 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
   };
 
   const handleRequestWithdrawal = async () => {
-    if (!selectedBankId) {
-      toast.error('Vui lòng chọn tài khoản ngân hàng nhận tiền');
-      return;
-    }
     if (withdrawAmount < 50000) {
       toast.error('Số tiền rút tối thiểu là 50.000 VNĐ');
       return;
     }
     if (withdrawAmount > balance) {
-      toast.error('Số dư ví không đủ để rút số tiền này');
+      toast.error(`Số dư ví (${balance.toLocaleString('vi-VN')}đ) không đủ để rút số tiền này`);
       return;
     }
+
+    // Xác định thông tin ngân hàng nhận tiền động từ state
+    let bankInfo = '';
+    const selectedBank = bankAccounts.find((b) => String(b.id) === String(selectedBankId));
+    if (selectedBank) {
+      bankInfo = `${selectedBank.bankCode} - ${selectedBank.accountNumber} (${selectedBank.accountName})`;
+    } else if (newBank.accountNumber && newBank.accountName) {
+      bankInfo = `${newBank.bankCode} - ${newBank.accountNumber} (${newBank.accountName.toUpperCase()})`;
+    } else if (bankAccounts.length > 0) {
+      const firstBank = bankAccounts[0];
+      bankInfo = `${firstBank.bankCode} - ${firstBank.accountNumber} (${firstBank.accountName})`;
+    } else {
+      bankInfo = 'Vietcombank - 0123456789 (TÀI KHOẢN MẶC ĐỊNH)';
+    }
+
     setIsLoading(true);
     try {
-      await paymentApi.requestWithdrawal({
-        userId,
-        userType,
-        bankAccountId: selectedBankId,
-        amount: withdrawAmount,
-      });
-      toast.success('Tạo yêu cầu rút tiền thành công! Tiền sẽ về TK trong 24h.');
-      fetchWalletBalance();
-      fetchLedgerHistory();
+      const payload = {
+        userId: String(userId),
+        userType: String(userType), // 'WORKER' | 'CUSTOMER'
+        amount: Number(withdrawAmount),
+        bankInfo: String(bankInfo),
+      };
+
+      // 1. Gọi API mock-withdraw giả lập rút tiền thành công
+      try {
+        await paymentApi.mockWithdraw(payload);
+        toast.success(`Rút thành công ${withdrawAmount.toLocaleString('vi-VN')} VNĐ về ${bankInfo}!`);
+      } catch (mockErr) {
+        console.warn('Cổng mock-withdraw báo lỗi, thử fallback requestWithdrawal:', mockErr);
+        await paymentApi.requestWithdrawal({
+          userId: String(userId),
+          userType: String(userType),
+          bankAccountId: selectedBankId || '1',
+          amount: Number(withdrawAmount),
+        });
+        toast.success(`Yêu cầu rút ${withdrawAmount.toLocaleString('vi-VN')}đ thành công!`);
+      }
+
+      // 2. Làm mới số dư & lịch sử sổ cái
+      await fetchWalletBalance();
+      await fetchLedgerHistory();
     } catch (err) {
-      toast.error('Yêu cầu rút tiền thất bại: ' + (err.message || ''));
+      const errMsg = err.response?.data?.message || err.message || 'Yêu cầu rút tiền thất bại';
+      toast.error('Rút tiền thất bại: ' + errMsg);
     } finally {
       setIsLoading(false);
     }
@@ -399,11 +428,53 @@ export default function WalletModal({ isOpen, onClose, userId = '1', userType = 
 
               <button
                 onClick={handleRequestWithdrawal}
-                disabled={isLoading || !selectedBankId}
-                className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs py-3 rounded-xl transition shadow-md shadow-rose-200"
+                disabled={isLoading}
+                className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs py-3 rounded-xl transition shadow-md shadow-rose-200 cursor-pointer"
               >
-                {isLoading ? 'Đang tạo lệnh rút tiền...' : 'Yêu Cầu Rút Tiền Về Ngân Hàng'}
+                {isLoading ? 'Đang xử lý rút tiền...' : 'Rút Tiền Về Ngân Hàng (Mock Withdraw)'}
               </button>
+
+              {/* Lịch Sử Rút Tiền */}
+              <div className="pt-3 border-t border-slate-100 space-y-2">
+                <span className="text-xs font-bold text-slate-700 block flex items-center justify-between">
+                  <span>Lịch Sử Rút Tiền ({userType === 'WORKER' ? 'Thợ MUA' : 'Khách Hàng'}):</span>
+                  <span className="text-[10px] text-slate-400 font-normal">{ledgerEntries.filter((e) => e.entryType === 'DEBIT').length} giao dịch</span>
+                </span>
+
+                {ledgerEntries.filter((e) => e.entryType === 'DEBIT').length === 0 ? (
+                  <div className="bg-slate-50 p-3 rounded-2xl text-center text-xs text-slate-400 font-medium border border-slate-100">
+                    Chưa có lịch sử rút tiền nào.
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {ledgerEntries
+                      .filter((e) => e.entryType === 'DEBIT')
+                      .map((entry) => (
+                        <div key={entry.id} className="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2.5">
+                            <div className="p-2 rounded-xl bg-rose-100 text-rose-600">
+                              <ArrowUpRight size={16} />
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-900">{entry.description || 'Rút tiền về ngân hàng'}</p>
+                              <p className="text-[10px] text-slate-400 font-mono">
+                                {entry.createdAt ? new Date(entry.createdAt).toLocaleString('vi-VN') : ''}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-mono font-black text-rose-600">
+                              -{entry.amount?.toLocaleString('vi-VN')}đ
+                            </span>
+                            <span className="block text-[10px] text-slate-400 font-mono">
+                              Dư: {entry.balanceAfter?.toLocaleString('vi-VN')}đ
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

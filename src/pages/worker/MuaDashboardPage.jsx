@@ -11,7 +11,7 @@ import { websocketService } from '../../api/websocketService';
 import { DispatchModal } from '../../components/worker/DispatchModal';
 import WalletModal from '../../components/wallet/WalletModal';
 import { useGpsTelemetry } from '../../hooks/useGpsTelemetry';
-import { Briefcase, Power, Clock, DollarSign, MapPin, Phone, Award, Radio, Signal, User, Star, Layers, RefreshCw, Wallet, Building2 } from 'lucide-react';
+import { Briefcase, Power, Clock, DollarSign, MapPin, Phone, Award, Radio, Signal, User, Star, Layers, RefreshCw, Wallet, Building2, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const MuaDashboardPage = () => {
@@ -32,6 +32,7 @@ export const MuaDashboardPage = () => {
 
   const [workerBalance, setWorkerBalance] = useState(0);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const [walletInitialTab, setWalletInitialTab] = useState('WITHDRAW');
 
   const workerId = user?.id || user?.workerId || user?.userId || null;
 
@@ -372,16 +373,24 @@ export const MuaDashboardPage = () => {
                 Sổ cái 100%
               </span>
             </div>
-            <div className="flex items-baseline justify-between">
+            <div className="flex items-baseline justify-between gap-2">
               <p className="text-2xl font-black text-white font-mono">
                 {workerBalance.toLocaleString('vi-VN')} <span className="text-xs font-bold opacity-75">đ</span>
               </p>
-              <button
-                onClick={() => setIsWalletModalOpen(true)}
-                className="bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-bold text-[11px] px-3 py-1.5 rounded-xl transition flex items-center gap-1 shadow-sm"
-              >
-                <Building2 size={13} /> Rút / Sổ Cái
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => { setWalletInitialTab('WITHDRAW'); setIsWalletModalOpen(true); }}
+                  className="bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-bold text-[11px] px-2.5 py-1.5 rounded-xl transition flex items-center gap-1 shadow-sm cursor-pointer"
+                >
+                  <Building2 size={13} /> Rút Tiền
+                </button>
+                <button
+                  onClick={() => { setWalletInitialTab('LEDGER'); setIsWalletModalOpen(true); }}
+                  className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-[11px] px-2.5 py-1.5 rounded-xl transition flex items-center gap-1 cursor-pointer"
+                >
+                  <QrCode size={13} /> Sổ Cái
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -490,6 +499,7 @@ export const MuaDashboardPage = () => {
         onClose={() => setIsWalletModalOpen(false)}
         userId={workerId}
         userType="WORKER"
+        initialTab={walletInitialTab}
         onBalanceUpdated={(b) => setWorkerBalance(b)}
       />
     </div>

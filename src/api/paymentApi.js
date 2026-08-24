@@ -44,4 +44,8 @@ export const paymentApi = {
   // Yêu cầu rút tiền Payout về ngân hàng
   requestWithdrawal: (payload) =>
     axiosInstance.post('/api/v1/wallets/withdraw', payload),
+
+  // Giả lập rút tiền thành công (Mock Withdraw)
+  mockWithdraw: (payload) =>
+    axiosInstance.post('/api/v1/wallets/mock-withdraw', payload),
 };

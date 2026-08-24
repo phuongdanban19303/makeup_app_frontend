@@ -6,9 +6,11 @@ import { setNearbyWorkers, setSelectedWorkerId } from '../../store/workerSlice';
 import { setActiveBooking } from '../../store/bookingSlice';
 import { locationApi } from '../../api/locationApi';
 import { bookingApi } from '../../api/bookingApi';
+import { paymentApi } from '../../api/paymentApi';
+import WalletModal from '../../components/wallet/WalletModal';
 import { NearbyMap } from '../../components/map/NearbyMap';
 import { WorkerCard } from '../../components/worker/WorkerCard';
-import { MapPin, Navigation, Radar, Sliders, Search, Sparkles, Filter, RefreshCw, List, Map as MapIcon, Activity, ChevronRight } from 'lucide-react';
+import { MapPin, Navigation, Radar, Sliders, Search, Sparkles, Filter, RefreshCw, List, Map as MapIcon, Activity, ChevronRight, Wallet, History, PlusCircle } from 'lucide-react';
 import { reverseGeocode } from '../../utils/geoUtils';
 import { toast } from 'sonner';
 
@@ -25,7 +27,28 @@ export const HomePage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileTab, setMobileTab] = useState('list'); // 'list' | 'map' for mobile viewport
 
+  // Customer Wallet State
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const [walletInitialTab, setWalletInitialTab] = useState('TOPUP');
+
   const RADIUS_OPTIONS = [1.0, 3.0, 5.0, 10.0];
+
+  // Fetch Customer Wallet Balance
+  const fetchWalletBalance = async () => {
+    try {
+      const customerId = user?.id || user?.userId || '1';
+      const res = await paymentApi.getWalletBalance(customerId, 'CUSTOMER');
+      const data = res.data?.data || res.data || res;
+      setWalletBalance(data.balance || 0);
+    } catch (e) {
+      console.warn('[HomePage] Failed to fetch customer wallet balance:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchWalletBalance();
+  }, [user]);
 
   // Restore active customer booking on page load
   useEffect(() => {
@@ -110,42 +133,48 @@ export const HomePage = () => {
       <section className="relative overflow-hidden pt-6 pb-6 bg-gradient-to-b from-rose-100/70 via-pink-50/50 to-slate-50 border-b border-rose-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
           
-          {/* Active Customer Booking Status Banner */}
-          {activeBooking && activeBooking.status !== 'COMPLETED' && activeBooking.status !== 'CANCELLED' && (
-            <div className="bg-gradient-to-r from-rose-600 via-pink-600 to-indigo-600 text-white rounded-3xl p-5 sm:p-6 shadow-xl shadow-rose-600/20 border border-rose-400/40 relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fadeIn">
-              <div className="flex items-start sm:items-center gap-4">
-                <div className="p-3 bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl flex-shrink-0 animate-pulse">
-                  <Activity size={28} className="text-white" />
+          {/* Customer Wallet Card Widget */}
+          <div className="bg-gradient-to-r from-slate-900 via-rose-950 to-slate-900 text-white rounded-3xl p-4 sm:p-5 shadow-xl border border-rose-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-500 via-pink-500 to-rose-600 flex items-center justify-center shadow-lg shadow-rose-500/30 shrink-0">
+                <Wallet size={22} className="text-white" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-rose-300 uppercase tracking-widest">
+                    Ví Khách Hàng
+                  </span>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.2 rounded-full font-bold">
+                    Khả dụng
+                  </span>
                 </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-black uppercase tracking-wider bg-white/20 backdrop-blur-md px-2.5 py-0.5 rounded-full text-white border border-white/30">
-                      Đang xử lý ca đặt
-                    </span>
-                    <span className="text-xs font-mono font-bold text-rose-100">
-                      #{activeBooking.bookingId || activeBooking.id}
-                    </span>
-                  </div>
-                  <h3 className="text-base sm:text-lg font-black text-white leading-tight">
-                    Bạn đang có lịch đặt makeup với thợ {activeBooking.muaName || activeBooking.workerName || 'MUA'}
-                  </h3>
-                  <p className="text-xs text-rose-100 font-medium flex flex-wrap items-center gap-3">
-                    <span>Gói: <strong>{activeBooking.serviceName || 'Makeup Dịch Vụ'}</strong></span>
-                    <span>•</span>
-                    <span>Trạng thái: <strong className="underline decoration-rose-300 font-bold">{activeBooking.status}</strong></span>
-                  </p>
+                <div className="flex items-baseline gap-1.5 mt-0.5">
+                  <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white">
+                    {walletBalance.toLocaleString('vi-VN')}
+                  </span>
+                  <span className="text-xs font-bold text-rose-200">VNĐ</span>
                 </div>
               </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                onClick={() => { setWalletInitialTab('TOPUP'); setIsWalletModalOpen(true); }}
+                className="flex-1 sm:flex-initial bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+              >
+                <PlusCircle size={15} />
+                <span>Nạp Tiền Ví</span>
+              </button>
 
               <button
-                onClick={() => navigate(`/booking/track/${activeBooking.bookingId || activeBooking.id}`)}
-                className="w-full sm:w-auto bg-white text-rose-600 hover:bg-rose-50 font-black text-xs px-5 py-3 rounded-2xl shadow-lg hover:scale-105 transition flex items-center justify-center gap-2 flex-shrink-0"
+                onClick={() => { setWalletInitialTab('LEDGER'); setIsWalletModalOpen(true); }}
+                className="flex-1 sm:flex-initial bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
               >
-                <span>Xem Tiến Trình</span>
-                <ChevronRight size={16} />
+                <History size={15} />
+                <span>Lịch Sử Giao Dịch</span>
               </button>
             </div>
-          )}
+          </div>
           
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             
@@ -343,6 +372,14 @@ export const HomePage = () => {
         </div>
       </main>
 
+      <WalletModal
+        isOpen={isWalletModalOpen}
+        onClose={() => setIsWalletModalOpen(false)}
+        userId={user?.id || user?.userId || '1'}
+        userType="CUSTOMER"
+        initialTab={walletInitialTab}
+        onBalanceUpdated={(b) => setWalletBalance(b)}
+      />
     </div>
   );
 };
